@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title> Веб-интерфейс графического исполнителя Стрелочка. </title>
+		<style>
+			canvas { 
+				width: 800px;
+				height: 800px;
+
+				left: 50%;
+				top: 50%;
+				transform: translate( -50%, -50% );
+				position: absolute;
+
+				background: white;
+			}
+			button {
+				position: absolute;
+				left: 50%;
+				top: 50px;
+				transform: translate( -50%, -50% );
+			}
+
+			span {
+				position: absolute;
+
+				bottom: 10px;
+				left: 50%;
+				transform: translate( -50%, 0 );
+			}
+		</style>
+	</head>
+	<body>
+		<canvas id="arrow_canvas"> </canvas>
+		<button onclick="algorithm_start()"> Начать </button>
+		<span>
+			Since 19.11.2020, developed by Dmitry Baholdin 9L, WEB GRIS STRELOCHKA
+		</span>
+		<script>
+			// СДЕЛАЛ 9Л ДИМА БАХОЛДИН 
+
+			let canvas 	= document.querySelector( '#arrow_canvas' );
+			let ctx		= canvas.getContext( '2d' );
+
+			canvas.width = 1024
+			canvas.height = 1024;
+
+			const MATRIX_DIMENSIONS = {
+				width: 12,
+				height: 12
+			}
+
+			const rect_size = 800 / ( MATRIX_DIMENSIONS.width / 2 + MATRIX_DIMENSIONS.height / 2 ) + 10
+
+			const ARROW = {
+				x: 0,
+				y: 0,
+				aim: {
+					x: 1,
+					y: 0
+				},
+				dir: 'right'
+			}
+
+			const directions = {
+				left: 	{x: -1, y: 0},
+				up: 	{x: 0, y: -1},
+				right: 	{x: 1, y: 0},
+				down: 	{x: 0, y: 1}
+			}
+
+			// Visualize the preset matrix at the canvas
+
+			function render_matrix() {
+				for ( let x = 0; x < MATRIX_DIMENSIONS.width; x++ ) {
+					for( let y = 0; y < MATRIX_DIMENSIONS.height; y++ ) {
+
+						ctx.fillStyle = 'rgb(210, 210, 210)'
+						ctx.fillRect( x * (rect_size + 1), y * (rect_size + 1), rect_size, rect_size )
+					}
+				}
+			}
+
+			let arrow_history = []
+			ARROW_INTERRUPT = false;
+
+			function render_arrow() {
+				{
+					ctx.clearRect( 0, 0, 1024, 1024 )
+
+					render_matrix()
+
+					ctx.strokeStyle = 'red'
+					ctx.beginPath()
+					ctx.moveTo( ARROW.x * (rect_size + 1) + rect_size / 2, ARROW.y * (rect_size + 1) + rect_size / 2 )
+					ctx.lineTo( ARROW.x * (rect_size + 1) + rect_size / 2 + ARROW.aim.x * rect_size, ARROW.y * (rect_size + 1) + rect_size / 2 + ARROW.aim.y * rect_size )
+					ctx.stroke()
+
+					for ( var key in arrow_history ) {
+						let pos = arrow_history[key]
+
+						ctx.strokeStyle = 'gray'
+						ctx.beginPath()
+						ctx.moveTo( pos.from_x * (rect_size + 1) + rect_size / 2, pos.from_y * (rect_size + 1) + rect_size / 2 )
+						ctx.lineTo( pos.x * (rect_size + 1) + rect_size / 2, pos.y * (rect_size + 1) + rect_size / 2 )
+						ctx.stroke()
+					}
+
+					ctx.fillStyle = 'gray'
+					ctx.beginPath()
+					ctx.rect( ARROW.x * (rect_size + 1) + rect_size / 2 - 15/2, ARROW.y * (rect_size + 1) + rect_size / 2 - 15 / 2, 15, 15 )
+					ctx.fill()
+				}
+
+				window.requestAnimationFrame(render_arrow)
+			}
+
+			render_arrow()
+
+			function arrow_setOrigin( x, y ) {
+				console.log(x, y)
+				if (x > MATRIX_DIMENSIONS.width - 1 || x < 0) {
+					// alert( 'СТРЕЛОЧКА!!!! ИДТИ НЕ МОЖЕТ!' )
+					ARROW_INTERRUPT = true
+					return false;
+				} else if (y < 0 || y > MATRIX_DIMENSIONS.height - 1) {
+					// alert( 'СТРЕЛОЧКА!!!! ИДТИ НЕ МОЖЕТ!' )
+					ARROW_INTERRUPT = true
+					return false
+				}
+
+				ARROW.x = x
+				ARROW.y = y
+			}
+
+			function arrow_step() {
+				arrow_history.push({ from_x: ARROW.x, from_y: ARROW.y, x: ARROW.x + ARROW.aim.x, y: ARROW.y + ARROW.aim.y })
+				arrow_setOrigin( ARROW.x + ARROW.aim.x, ARROW.y + ARROW.aim.y )
+			}
+
+			function arrow_rotate() {
+				const clockwise = {
+					left: 'down',
+					down: 'right',
+					right: 'up',
+					up: 'left'
+				}
+
+				ARROW.dir = clockwise[ARROW.dir]
+				ARROW.aim.x = directions[ARROW.dir].x
+				ARROW.aim.y = directions[ARROW.dir].y
+			}
+
+			// Algorithm begings
+
+			function thread_postpone( callback, time ) {
+				callback()
+
+				return new Promise( function( resolve ) {
+					setTimeout( resolve, time )
+				} )
+			}
+
+			async function algorithm_start() {
+				async function action(func) {
+					if (!ARROW_INTERRUPT) {
+						await thread_postpone( func, 200 );
+					}
+				}
+
+				async function setOrigin( x, y ) {
+					await action( () => arrow_setOrigin( x, y ) )
+				}
+				async function step() {
+					await action( () => arrow_step() )
+				}
+				async function rotate() {
+					await action( () => arrow_rotate() )
+				}
+
+				// Algorithm begings here: GOTO 123
+
+				await setOrigin( 11, 0 );
+				await rotate();
+				await rotate();
+				// await rotate();
+
+
+				async function proc_ladder() {
+					await step();
+					await rotate();
+					await step();
+					await rotate();
+					await rotate();
+					await rotate();
+				}
+
+				for (var i = 1; i < 15; i++) {
+					await proc_ladder();
+				}
+			}
+
+
+			// 9Л БАХОЛДИН ДИМА СДЕЛАЛ
+		</script>
+	</body>
+</html>
